@@ -1,5 +1,9 @@
 package Slave;
 
+import Data.ArchivoData;
+import Data.MetadataData;
+import Entity.Archivo;
+import Entity.Metadata;
 import Utility.Conversiones;
 import Utility.Variables;
 import java.io.IOException;
@@ -20,8 +24,9 @@ public class SlaveConnection extends Thread {
     private InetAddress address;
     public String ipServer;
     public String slaveId;
-    
+
     byte[] buffer = new byte[4096];
+
     private SlaveConnection() throws UnknownHostException, SocketException, IOException {
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
         int i = 0;
@@ -54,11 +59,12 @@ public class SlaveConnection extends Thread {
 
     @Override
     public void run() {
-        //byte[] buffer = new byte[4096];
-        DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, Variables.MASTERPORTNUMBER);
+        try {
+            DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, Variables.MASTERPORTNUMBER);
+            ArchivoData archivoData;
+            MetadataData metadataData;
+            while (true) {
 
-        while (true) {
-            try {
                 this.socket.receive(mensaje);
                 String msg = new String(mensaje.getData(), 0, mensaje.getLength());
                 Element element = Conversiones.stringToXML(msg.trim());
@@ -70,30 +76,53 @@ public class SlaveConnection extends Thread {
                         Variables.SLAVEPORTNUMBER = Integer.parseInt(element.getChild("msg").getValue());
                         this.socket.close();
                         this.socket = new DatagramSocket(Variables.SLAVEPORTNUMBER);
+                        Variables.DISKID = Integer.parseInt(element.getChild("disk").getValue());
                         this.enviar("", "READY", mensaje.getPort());
                         break;
                     case "READY":
-                        System.out.println("Puerto asignado: " + Variables.SLAVEPORTNUMBER);
-
+                        System.out.println("Puerto asignado: " + Variables.SLAVEPORTNUMBER
+                                + "\nDisco asignado: " + Variables.DISKID);
                         break;
-                    case "GUARDAR":
-                            System.out.println("encoded "+Variables.SLAVEPORTNUMBER+" :"+ element.getChild("msg"));
+
+                    case "PARTE":
+                        archivoData = new ArchivoData(element.getChild("nombre").getValue());
+                        archivoData.escribirEnArchivo(new Archivo(
+                                element.getChild("nombre").getValue(),
+                                element.getChild("parte").getValue(),
+                                element.getChild("msg").getValue())
+                        );
+                        break;
+
+                    case "METADATA":
+                        Metadata metadata = new Metadata(
+                                element.getChild("nombre").getValue(),
+                                element.getChild("autor").getValue(),
+                                element.getChild("fecha").getValue(),
+                                element.getChild("formato").getValue()
+                        );
+                        metadataData = MetadataData.getInstance();
+                        metadataData.escribirEnMetadata(metadata);
+                        break;
+
+                    case "OBTENER_ARCHIVO":
+                        archivoData = new ArchivoData(element.getChild("nombre").getValue());
+                        archivoData.obtenerArchivo(this);
                         break;
                     default:
                         break;
 
                 }//switch
 
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            } catch (JDOMException ex) {
-                ex.printStackTrace();
-            }//try-catch
-        }//while
+            }//while
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        } catch (JDOMException ex) {
+            ex.printStackTrace();
+        }//try-catch
     }//run
 
-    public boolean enviar(String msg, String accion, int portnumber) throws IOException {
-        
+    public void enviar(String msg, String accion, int portnumber) throws IOException {
+
         Element ePacket = new Element("packet");
 
         Element eMsg = new Element("msg");
@@ -105,7 +134,39 @@ public class SlaveConnection extends Thread {
 
         DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, portnumber);
         this.socket.send(mensaje);
-        return true;
     }//enviar
+
+    public void enviarParte(String nombre, String id, String encoded) throws IOException {
+        Element ePacket = new Element("p");
+
+        Element eDiskId = new Element("d");
+        eDiskId.addContent(Variables.DISKID+"");
+
+        Element ePartId = new Element("pi");
+        ePartId.addContent(id+"");
+        
+        Element eEncoded = new Element("m");
+        eEncoded.addContent(encoded);
+
+        Element eNombre = new Element("n");
+        eNombre.addContent(nombre);
+        
+        ePacket.addContent(eDiskId);
+        ePacket.addContent(ePartId);
+        ePacket.addContent(eEncoded);        
+        ePacket.addContent(eNombre);
+        
+        System.out.println("Impresión: "+ Conversiones.anadirAccion(ePacket, "PARTE").getBytes().length);
+        
+        buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
+
+        DatagramPacket mensaje = new DatagramPacket(
+                buffer,
+                buffer.length,
+                this.address,
+                Variables.MASTERPORTNUMBER
+        );
+        this.socket.send(mensaje);
+    }//enviarParte
 
 }//end class

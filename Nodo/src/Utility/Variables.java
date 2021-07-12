@@ -7,7 +7,6 @@ public class Variables {
     public static int MASTERPORTNUMBER = 5025;
     public static String PATH = "DISK-";
     public static int DISKID = 0;
-    public static String ABSOLUTEPATH = PATH+DISKID;
     
     
 }//end class

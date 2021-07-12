@@ -1,7 +1,6 @@
 
 package Entity;
 
-import java.util.Date;
 
 public class Metadata {
     private String nombre, autor, fecha, formato, parte;

@@ -1,6 +1,6 @@
 package nodo;
 
-import Data.DiskData;
+import Data.ArchivoData;
 import Slave.SlaveConnection;
 import Utility.Variables;
 import java.io.FileNotFoundException;
