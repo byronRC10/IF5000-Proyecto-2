@@ -25,7 +25,7 @@ public class SlaveConnection extends Thread {
     public String ipServer;
     public String slaveId;
 
-    byte[] buffer = new byte[4096];
+    byte[] buffer = new byte[60000];
 
     private SlaveConnection() throws UnknownHostException, SocketException, IOException {
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
@@ -137,18 +137,18 @@ public class SlaveConnection extends Thread {
     }//enviar
 
     public void enviarParte(String nombre, String id, String encoded) throws IOException {
-        Element ePacket = new Element("p");
+        Element ePacket = new Element("Packet");
 
-        Element eDiskId = new Element("d");
+        Element eDiskId = new Element("DiskId");
         eDiskId.addContent(Variables.DISKID+"");
 
-        Element ePartId = new Element("pi");
+        Element ePartId = new Element("ParteId");
         ePartId.addContent(id+"");
         
-        Element eEncoded = new Element("m");
+        Element eEncoded = new Element("Encoded");
         eEncoded.addContent(encoded);
 
-        Element eNombre = new Element("n");
+        Element eNombre = new Element("Nombre");
         eNombre.addContent(nombre);
         
         ePacket.addContent(eDiskId);
