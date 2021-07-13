@@ -2,12 +2,11 @@ package Data;
 
 import Entity.Archivo;
 import Entity.Metadata;
+import Utility.OrdenarArray;
 import Utility.Variables;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,17 +14,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 
 public class DiskData {
 
     private static DiskData INSTANCE = null;
     private String path;
     private BufferedWriter bw;
-    private BufferedReader br;
     private ArrayList<Archivo> archivo;
 
     private DiskData() throws IOException {
-        this.path = "../" + Variables.PATH + "controller";
+        this.path = "../" + Variables.PATH + "Controller";
         File directorio = new File(this.path);
         if (!directorio.exists()) {
             directorio.mkdirs();
@@ -47,7 +46,7 @@ public class DiskData {
     
     public void construirArchivo() throws FileNotFoundException, IOException {
         String encoded = "";
-        System.out.println("Disco -> Parte: "+ this.archivo.isEmpty());
+        Collections.sort(this.archivo, new OrdenarArray());
         for (int i = 0; i < this.archivo.size(); i++) {
             System.out.println("Disco -> Parte: "+ this.archivo.get(i).getDiskId()+" -> "+this.archivo.get(i).getParte());
             encoded += this.archivo.get(i).getEncoded();
@@ -55,7 +54,7 @@ public class DiskData {
         
         byte[] bytes = Base64.getDecoder().decode(encoded);
 
-        Path destinationFile = Paths.get(this.path, "ArchivoRecuperado.pdf");
+        Path destinationFile = Paths.get(this.path, this.archivo.get(0).getNombre()+".pdf");
         Files.write(destinationFile, bytes);
 
     }//contruirArchivo

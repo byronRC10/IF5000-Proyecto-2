@@ -76,13 +76,13 @@ public class ArchivoData {
             Element elementoActual = (Element) objetoActual;
             Archivo archivoActual = new Archivo(
                     this.nombre,
-                    elementoActual.getAttributeValue("Parte"),
+                    elementoActual.getAttributeValue("Numero"),
                     elementoActual.getChild("Encoded").getValue()
             );
             archivo.add(archivoActual);
         }//for-each
         for (int i = 0; i < archivo.size(); i++) {
-            slave.enviarParte(this.nombre, i + "", archivo.get(i).getEncoded());
+            slave.enviarParte(this.nombre, archivo.get(i).getParte(), archivo.get(i).getEncoded());
         }//for i        
 
     }//obtenerArchivo

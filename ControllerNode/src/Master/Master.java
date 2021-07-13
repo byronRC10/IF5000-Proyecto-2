@@ -36,13 +36,13 @@ public class Master extends Thread {
     private InetAddress address;
     private ArrayList<Integer> ports;
 
-    byte[] buffer = new byte[4096];
+    byte[] buffer = new byte[60000];
 
     private Master() throws UnknownHostException, SocketException, IOException {
         this.address = InetAddress.getByName("localhost");
         this.socket = new DatagramSocket(Variables.PORTNUMBER);
         this.ports = new ArrayList<>();
-        this.ports.add(Variables.PORTNUMBER);
+        //this.ports.add(Variables.PORTNUMBER);
         this.start();
     }//SlavaeConnection
 
@@ -56,7 +56,6 @@ public class Master extends Thread {
 
     @Override
     public void run() {
-        //byte[] buffer = new byte[4096];
         DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length);
         boolean entrar = true;
         try {
@@ -65,14 +64,16 @@ public class Master extends Thread {
 
                 this.socket.receive(mensaje);
                 String msg = new String(mensaje.getData(), 0, mensaje.getLength());
-                //System.out.println(msg.charAt(msg.length()-4)+msg.charAt(msg.length()-3)+msg.charAt(msg.length()-2)+msg.charAt(msg.length()-1));
                 Element element = Conversiones.stringToXML(msg.trim());
                 String accion = element.getChild("accion").getValue();
                 System.out.println("Mensaje: " + accion);
 
                 switch (accion) {
                     case "GET_PORT":
-                        this.enviarPuerto((this.ports.get(this.ports.size() - 1) + 1) + "", "SET_PORT", mensaje.getPort());
+                        if(!this.ports.isEmpty())
+                            this.enviarPuerto((this.ports.get(this.ports.size() - 1) + 1) + "", "SET_PORT", mensaje.getPort());
+                        else
+                            this.enviarPuerto((Variables.PORTNUMBER + 1) + "", "SET_PORT", mensaje.getPort());
                         break;
                     case "READY":
                         this.ports.add(mensaje.getPort());
@@ -84,16 +85,12 @@ public class Master extends Thread {
 
                         diskData.agregarParte(
                                 new Archivo(
-                                        Integer.parseInt(element.getChild("d").getValue()),
-                                        Integer.parseInt(element.getChild("pi").getValue()),
-                                        element.getChild("n").getValue(),
-                                        element.getChild("m").getValue()
+                                        Integer.parseInt(element.getChild("DiskId").getValue()),
+                                        Integer.parseInt(element.getChild("ParteId").getValue()),
+                                        element.getChild("Nombre").getValue(),
+                                        element.getChild("Encoded").getValue()
                                 )
                         );
-                        /*
-                        diskData = DiskData.getInstance();
-                        diskData.agregarParte(element.getChild("msg").getValue());
-                         */
                         break;
 
                     case "METADATA":
@@ -111,7 +108,7 @@ public class Master extends Thread {
                         break;
                 }//switch
 
-                if (this.ports.size() == 6 && entrar) {
+                if (this.ports.size() == 3 && entrar) {
                     this.enviarArchivo();
                     entrar = false;
                 }
@@ -119,21 +116,19 @@ public class Master extends Thread {
             }//while
         } catch (IOException ex) {
             ex.printStackTrace();
-        }catch (JDOMException ex) {
+        } catch (JDOMException ex) {
             ex.printStackTrace();
         }//try-catch
     }//run
 
     public void enviarPuerto(String msg, String accion, int portnumber) throws IOException {
-        //byte[] buffer = new byte[4096];
-
         Element ePacket = new Element("packet");
 
         Element eMsg = new Element("msg");
         eMsg.addContent(msg);
 
         Element eDisk = new Element("disk");
-        eDisk.addContent(this.ports.size() + "");
+        eDisk.addContent((this.ports.size()+1) + "");
 
         ePacket.addContent(eMsg);
         ePacket.addContent(eDisk);
@@ -173,35 +168,34 @@ public class Master extends Thread {
         for (int i = 0; i < numParts - 1; i++) {
             encoded.getChars(partsLength * i, partsLength * (i + 1), partes[i], 0);
         }//for
+        //Para evitar que falte información, la última parte empieza desde
+        //el fin de la anterior y termina en el largo del archivo completo
         encoded.getChars(partsLength * (numParts - 1), encoded.length(), partes[numParts - 1], 0);
 
-        int index = 0;
-        for (int i = 0; i < (this.ports.size() - 1); i++) {
-            int j = 0;
-            while (j < numParts / (this.ports.size() - 1)) {
-                Element ePacket = new Element("packet");
+        for (int i = 0; i < numParts; i++) {
 
-                Element eMsg = new Element("msg");
-                eMsg.addContent(new String(partes[index]).trim());
+            Element ePacket = new Element("packet");
 
-                Element eNombre = new Element("nombre");
-                eNombre.addContent("prueba");
+            Element eMsg = new Element("msg");
+            eMsg.addContent(new String(partes[i]).trim());
 
-                Element eParte = new Element("parte");
-                eParte.addContent(j + "");
+            Element eNombre = new Element("nombre");
+            eNombre.addContent("prueba");
 
-                ePacket.addContent(eMsg);
-                ePacket.addContent(eNombre);
-                ePacket.addContent(eParte);
+            Element eParte = new Element("parte");
+            eParte.addContent(i + "");
 
-                buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
+            ePacket.addContent(eMsg);
+            ePacket.addContent(eNombre);
+            ePacket.addContent(eParte);
 
-                DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i + 1));
-                this.socket.send(mensaje);
-                index++;
-                j++;
-            }//while
+            buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
 
+            DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i%this.ports.size()));
+            this.socket.send(mensaje);
+        }//for i
+        
+        for (int i = 0; i < this.ports.size(); i++) {
             Element ePacket = new Element("packet");
 
             Element eNombre = new Element("nombre");
@@ -223,10 +217,9 @@ public class Master extends Thread {
 
             buffer = Conversiones.anadirAccion(ePacket, "METADATA").getBytes();
 
-            DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i + 1));
+            DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i));
             this.socket.send(mensaje);
-
-        }//for
+        }//for i
     }//enviarArchivo
 
     public void construirArchivo() throws FileNotFoundException, IOException {
@@ -246,7 +239,7 @@ public class Master extends Thread {
     }//contruirArchivo
 
     public void obtenerArchivo() throws IOException, InterruptedException {
-        for (int i = 1; i < this.ports.size(); i++) {
+        for (int i = 0; i < this.ports.size(); i++) {
             this.enviarMensaje("nombre", "prueba", "OBTENER_ARCHIVO", this.ports.get(i));
             Thread.sleep(500);
         }

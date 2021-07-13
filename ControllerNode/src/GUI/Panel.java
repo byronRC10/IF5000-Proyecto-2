@@ -16,10 +16,6 @@ public class Panel extends JPanel implements ActionListener{
     private JButton jbtnObtenerArchivo;
 
     public Panel() {
-        this.setSize(200, 200);
-        JLabel jlblIP = new JLabel(Variables.IPSERVER);
-        jlblIP.setBounds(0, 0, 200, 60);
-        this.add(jlblIP);
         
         this.jbtnObtenerArchivo = new JButton("Obtener Archivo");
         this.jbtnObtenerArchivo.setBounds(100,100,100,50);
