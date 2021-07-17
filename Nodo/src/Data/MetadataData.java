@@ -1,11 +1,14 @@
 package Data;
 
 import Entity.Metadata;
+import Slave.SlaveConnection;
 import Utility.Variables;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
@@ -70,5 +73,39 @@ public class MetadataData {
         
         this.guardarXML();
     }//escribirEnMetadata
+    
+    public ArrayList<Metadata> obtenerMetadata(){
+        ArrayList<Metadata> metadata = new ArrayList<>();
+        List elementList = this.root.getChildren();
 
+        for (Object objetoActual : elementList) {
+            Element elementoActual = (Element) objetoActual;
+            Metadata metadataActual = new Metadata(
+                    elementoActual.getAttributeValue("Nombre"),
+                    elementoActual.getChild("Autor").getValue(),
+                    elementoActual.getChild("Fecha").getValue(),
+                    elementoActual.getChild("Formato").getValue()
+            );
+            metadata.add(metadataActual);
+        }//for-each
+        return metadata;
+    }//obtenerMetadata
+    
+    public void buscarMetadata(String nombre, SlaveConnection slave) throws IOException{
+        List elementList = this.root.getChildren();
+
+        for (Object objetoActual : elementList) {
+            Element elementoActual = (Element) objetoActual;
+            Metadata metadataActual = new Metadata(
+                    elementoActual.getAttributeValue("Nombre"),
+                    elementoActual.getChild("Autor").getValue(),
+                    elementoActual.getChild("Fecha").getValue(),
+                    elementoActual.getChild("Formato").getValue()
+            );
+            if(metadataActual.getNombre().equals(nombre)){
+                slave.enviarMetadata(metadataActual);
+            }//if
+        }//for-each
+    }//buscarMetadata
+    
 }//end class
