@@ -67,7 +67,7 @@ public class ArchivoData {
         xmlOutputter.output(this.document, new PrintWriter(this.path));
     }// guardarXML
 
-    public void obtenerArchivo(SlaveConnection slave) throws IOException {
+    public ArrayList<Archivo> obtenerArchivo() throws IOException {
 
         ArrayList<Archivo> archivo = new ArrayList<>();
         List elementList = this.root.getChildren();
@@ -80,12 +80,15 @@ public class ArchivoData {
                     elementoActual.getChild("Encoded").getValue()
             );
             archivo.add(archivoActual);
-        }//for-each
-        for (int i = 0; i < archivo.size(); i++) {
-            slave.enviarParte(this.nombre, archivo.get(i).getParte(), archivo.get(i).getEncoded());
-        }//for i        
-
+        }//for-each       
+        return archivo;
     }//obtenerArchivo
+    
+    public void obtenerMetadata(SlaveConnection slave, String nombreArchivo){
+        
+        
+        
+    }//obtenerMetadata
 
     /*
         this.bw = new BufferedWriter(

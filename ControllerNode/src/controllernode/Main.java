@@ -2,15 +2,10 @@ package controllernode;
 
 import GUI.Panel;
 import Master.Master;
-import Utility.Variables;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 public class Main {
 
@@ -29,6 +24,7 @@ public class Main {
             frame.setResizable(false);
             frame.setVisible(true);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            
         }catch (UnknownHostException ex) {
             ex.printStackTrace();
         } catch (SocketException ex) {

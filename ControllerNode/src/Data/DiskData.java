@@ -7,7 +7,6 @@ import Utility.Variables;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +20,7 @@ public class DiskData {
     private static DiskData INSTANCE = null;
     private String path;
     private BufferedWriter bw;
+    private Metadata metadata;
     private ArrayList<Archivo> archivo;
 
     private DiskData() throws IOException {
@@ -44,6 +44,10 @@ public class DiskData {
         this.archivo.add(archivo);
     }//agregarParte
     
+    public void resetArchivo(){
+        //this.archivo.clear();
+    }//resetArchivo
+    
     public void construirArchivo() throws FileNotFoundException, IOException {
         String encoded = "";
         Collections.sort(this.archivo, new OrdenarArray());
@@ -53,12 +57,12 @@ public class DiskData {
         }
         
         byte[] bytes = Base64.getDecoder().decode(encoded);
-
+        
         Path destinationFile = Paths.get(this.path, this.archivo.get(0).getNombre()+".pdf");
         Files.write(destinationFile, bytes);
 
     }//contruirArchivo
-    
+    /*
     public void guardarMetadata(Metadata metadata) throws IOException {
         this.bw = new BufferedWriter(
                 new FileWriter(
@@ -78,7 +82,7 @@ public class DiskData {
         this.bw.flush();
         this.bw.close();
     }//guardarMetadata
-
+*/
     public ArrayList<Archivo> getArchivo() {
         return archivo;
     }
@@ -86,7 +90,13 @@ public class DiskData {
     public void setArchivo(ArrayList<Archivo> archivo) {
         this.archivo = archivo;
     }
-    
-    
 
+    public Metadata getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Metadata metadata) {
+        this.metadata = metadata;
+    }
+    
 }//end class

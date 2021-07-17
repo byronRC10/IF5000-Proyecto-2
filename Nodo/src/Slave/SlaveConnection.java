@@ -13,7 +13,10 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 
@@ -46,7 +49,7 @@ public class SlaveConnection extends Thread {
         this.socket = new DatagramSocket(Variables.SLAVEPORTNUMBER);
         this.slaveId = "-1";
         this.start();
-        this.enviar("", "GET_PORT", Variables.MASTERPORTNUMBER);
+        this.enviarMensaje("msg", "GET_PORT", "GET_PORT");
     }//SlavaeConnection
 
     public static SlaveConnection getInstance() throws UnknownHostException, SocketException, IOException {
@@ -77,7 +80,7 @@ public class SlaveConnection extends Thread {
                         this.socket.close();
                         this.socket = new DatagramSocket(Variables.SLAVEPORTNUMBER);
                         Variables.DISKID = Integer.parseInt(element.getChild("disk").getValue());
-                        this.enviar("", "READY", mensaje.getPort());
+                        this.enviarMensaje("nonmsg", "nonmsg", "READY");
                         break;
                     case "READY":
                         System.out.println("Puerto asignado: " + Variables.SLAVEPORTNUMBER
@@ -104,9 +107,14 @@ public class SlaveConnection extends Thread {
                         metadataData.escribirEnMetadata(metadata);
                         break;
 
+                    case "OBTENER_METADATA":
+                        metadataData = MetadataData.getInstance();
+                        metadataData.buscarMetadata(element.getChild("Nombre").getValue(), this);
+                        break;
+
                     case "OBTENER_ARCHIVO":
-                        archivoData = new ArchivoData(element.getChild("nombre").getValue());
-                        archivoData.obtenerArchivo(this);
+                        archivoData = new ArchivoData(element.getChild("Nombre").getValue());
+                        this.enviarParte(archivoData.obtenerArchivo());
                         break;
                     default:
                         break;
@@ -118,55 +126,91 @@ public class SlaveConnection extends Thread {
             ex.printStackTrace();
         } catch (JDOMException ex) {
             ex.printStackTrace();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(SlaveConnection.class.getName()).log(Level.SEVERE, null, ex);
         }//try-catch
     }//run
 
-    public void enviar(String msg, String accion, int portnumber) throws IOException {
+    public void enviarMensaje(String msgName, String msg, String accion) throws IOException {
 
         Element ePacket = new Element("packet");
 
-        Element eMsg = new Element("msg");
+        Element eMsg = new Element(msgName);
         eMsg.addContent(msg);
 
         ePacket.addContent(eMsg);
 
         buffer = Conversiones.anadirAccion(ePacket, accion).getBytes();
 
-        DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, portnumber);
+        DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, Variables.MASTERPORTNUMBER);
         this.socket.send(mensaje);
     }//enviar
 
-    public void enviarParte(String nombre, String id, String encoded) throws IOException {
+    public void enviarMetadata(Metadata metadata) throws IOException {
         Element ePacket = new Element("Packet");
-
-        Element eDiskId = new Element("DiskId");
-        eDiskId.addContent(Variables.DISKID+"");
-
-        Element ePartId = new Element("ParteId");
-        ePartId.addContent(id+"");
         
-        Element eEncoded = new Element("Encoded");
-        eEncoded.addContent(encoded);
-
         Element eNombre = new Element("Nombre");
-        eNombre.addContent(nombre);
+        eNombre.addContent(metadata.getNombre());
         
-        ePacket.addContent(eDiskId);
-        ePacket.addContent(ePartId);
-        ePacket.addContent(eEncoded);        
-        ePacket.addContent(eNombre);
+        Element eAutor = new Element("Autor");
+        eAutor.addContent(metadata.getAutor());
         
-        System.out.println("Impresión: "+ Conversiones.anadirAccion(ePacket, "PARTE").getBytes().length);
+        Element eFecha = new Element("Fecha");
+        eFecha.addContent(metadata.getFecha());
         
-        buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
+        Element eFormato = new Element("Formato");
+        eFormato.addContent(metadata.getFormato());
 
-        DatagramPacket mensaje = new DatagramPacket(
-                buffer,
-                buffer.length,
-                this.address,
-                Variables.MASTERPORTNUMBER
-        );
-        this.socket.send(mensaje);
+        ePacket.addContent(eNombre);
+        ePacket.addContent(eAutor);
+        ePacket.addContent(eFecha);
+        ePacket.addContent(eFormato);
+        
+        buffer = Conversiones.anadirAccion(ePacket, "METADATA").getBytes();
+
+            DatagramPacket mensaje = new DatagramPacket(
+                    buffer,
+                    buffer.length,
+                    this.address,
+                    Variables.MASTERPORTNUMBER
+            );
+            this.socket.send(mensaje);
+    }//enviarMetadata
+
+    public void enviarParte(ArrayList<Archivo> archivo) throws IOException, InterruptedException {
+        for (int i = 0; i < archivo.size(); i++) {
+            System.out.println("Parte id: "+ archivo.get(i).getParte());
+            Element ePacket = new Element("Packet");
+
+            Element eDiskId = new Element("DiskId");
+            eDiskId.addContent(Variables.DISKID + "");
+
+            Element ePartId = new Element("ParteId");
+            ePartId.addContent(archivo.get(i).getParte() + "");
+
+            Element eEncoded = new Element("Encoded");
+            eEncoded.addContent(archivo.get(i).getEncoded());
+
+            Element eNombre = new Element("Nombre");
+            eNombre.addContent(archivo.get(i).getNombre());
+
+            ePacket.addContent(eDiskId);
+            ePacket.addContent(ePartId);
+            ePacket.addContent(eEncoded);
+            ePacket.addContent(eNombre);
+
+            buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
+
+            DatagramPacket mensaje = new DatagramPacket(
+                    buffer,
+                    buffer.length,
+                    this.address,
+                    Variables.MASTERPORTNUMBER
+            );
+            this.socket.send(mensaje);
+            Thread.sleep(1000);
+        }//for
+        
     }//enviarParte
 
 }//end class

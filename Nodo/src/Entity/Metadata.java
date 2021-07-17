@@ -1,18 +1,10 @@
 
 package Entity;
 
-import java.util.Date;
 
 public class Metadata {
-    private String nombre, autor, fecha, formato, parte;
+    private String nombre, autor, fecha, formato;
 
-    public Metadata(String nombre, String autor, String fecha, String formato, String parte) {
-        this.nombre = nombre;
-        this.autor = autor;
-        this.fecha = fecha;
-        this.formato = formato;
-        this.parte = parte;
-    }
 
     public Metadata(String nombre, String autor, String fecha, String formato) {
         this.nombre = nombre;
@@ -20,8 +12,7 @@ public class Metadata {
         this.fecha = fecha;
         this.formato = formato;
     }
-    
-    
+       
 
     public String getNombre() {
         return nombre;
@@ -53,14 +44,6 @@ public class Metadata {
 
     public void setFormato(String formato) {
         this.formato = formato;
-    }
-
-    public String getParte() {
-        return parte;
-    }
-
-    public void setParte(String parte) {
-        this.parte = parte;
     }
 
     

@@ -42,6 +42,7 @@ public class Master extends Thread {
         this.address = InetAddress.getByName("localhost");
         this.socket = new DatagramSocket(Variables.PORTNUMBER);
         this.ports = new ArrayList<>();
+        DiskData diskData = DiskData.getInstance();
         //this.ports.add(Variables.PORTNUMBER);
         this.start();
     }//SlavaeConnection
@@ -95,23 +96,18 @@ public class Master extends Thread {
 
                     case "METADATA":
                         Metadata metadata = new Metadata(
-                                element.getChild("nombre").getValue(),
-                                element.getChild("autor").getValue(),
-                                element.getChild("fecha").getValue(),
-                                element.getChild("formato").getValue()
+                                element.getChild("Nombre").getValue(),
+                                element.getChild("Autor").getValue(),
+                                element.getChild("Fecha").getValue(),
+                                element.getChild("Formato").getValue()
                         );
                         diskData = DiskData.getInstance();
-                        diskData.guardarMetadata(metadata);
-                        diskData.construirArchivo();
+                        diskData.setMetadata(metadata);
+                        
                         break;
                     default:
                         break;
                 }//switch
-
-                if (this.ports.size() == 3 && entrar) {
-                    this.enviarArchivo();
-                    entrar = false;
-                }
 
             }//while
         } catch (IOException ex) {
@@ -153,25 +149,41 @@ public class Master extends Thread {
         this.socket.send(mensaje);
     }//enviarMensaje
 
-    public void enviarArchivo() throws IOException {
-        File documento = new File("../ejemplo.pdf");
-
+    public void enviarArchivo(Metadata metadata) throws IOException, InterruptedException {
+        File documento = new File("../"+metadata.getNombre()+"."+metadata.getFormato());
+        
+        //Se lee el archivo
         FileInputStream fileInputStreamReader = new FileInputStream(documento);
+        
+        //Se obtiene el tamaño y se codifica
         byte[] bytes = new byte[(int) documento.length()];
         fileInputStreamReader.read(bytes);
         String encoded = Base64.getEncoder().encodeToString(bytes);
-
-        int numParts = (int) Math.ceil((encoded.length() * 1d) / 4000d);
-        int partsLength = 4001;
+        
+        //Tamaño de las partes
+        int partsLength = encoded.length()/this.ports.size();
+        
+        //Si sobrepasa el tamaño del buffer entonces se sigue diviendo hasta que quepa
+        while(partsLength > 59000)
+            partsLength = partsLength / this.ports.size();
+        
+        //Número de partes en que se va a divir el archivo codificado
+        int numParts = (int) Math.ceil((encoded.length() * 1d) / partsLength);
+        
+        
+        //Matris que va a contener el las partes separadas
         char[][] partes = new char[numParts][partsLength + 1];
 
+        //Se divide el archivo codificado en partes
         for (int i = 0; i < numParts - 1; i++) {
             encoded.getChars(partsLength * i, partsLength * (i + 1), partes[i], 0);
         }//for
+        
         //Para evitar que falte información, la última parte empieza desde
         //el fin de la anterior y termina en el largo del archivo completo
         encoded.getChars(partsLength * (numParts - 1), encoded.length(), partes[numParts - 1], 0);
 
+        //Se envian las partes a los nodos
         for (int i = 0; i < numParts; i++) {
 
             Element ePacket = new Element("packet");
@@ -180,7 +192,7 @@ public class Master extends Thread {
             eMsg.addContent(new String(partes[i]).trim());
 
             Element eNombre = new Element("nombre");
-            eNombre.addContent("prueba");
+            eNombre.addContent(metadata.getNombre());
 
             Element eParte = new Element("parte");
             eParte.addContent(i + "");
@@ -193,22 +205,24 @@ public class Master extends Thread {
 
             DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i%this.ports.size()));
             this.socket.send(mensaje);
+            Thread.sleep(100);
         }//for i
         
+        //Se envia la metadata a los nodos
         for (int i = 0; i < this.ports.size(); i++) {
             Element ePacket = new Element("packet");
 
             Element eNombre = new Element("nombre");
-            eNombre.addContent("prueba");
+            eNombre.addContent(metadata.getNombre());
 
             Element eAutor = new Element("autor");
-            eAutor.addContent("fabricio");
+            eAutor.addContent(metadata.getAutor());
 
             Element eFecha = new Element("fecha");
-            eFecha.addContent("10/07/2021");
+            eFecha.addContent(metadata.getFecha());
 
             Element eFormato = new Element("formato");
-            eFormato.addContent("pdf");
+            eFormato.addContent(metadata.getFormato());
 
             ePacket.addContent(eNombre);
             ePacket.addContent(eAutor);
@@ -222,29 +236,22 @@ public class Master extends Thread {
         }//for i
     }//enviarArchivo
 
-    public void construirArchivo() throws FileNotFoundException, IOException {
-        BufferedReader br = new BufferedReader(new FileReader(new File("prueba.txt")));
-        String linea = br.readLine();
-        String encoded = "";
-        while (linea != null) {
-            encoded += linea;
-            linea = br.readLine();
-        }//while
-
-        byte[] bytes = Base64.getDecoder().decode(encoded);
-
-        Path destinationFile = Paths.get("", "prueba.pdf");
-        Files.write(destinationFile, bytes);
-
-    }//contruirArchivo
-
-    public void obtenerArchivo() throws IOException, InterruptedException {
-        for (int i = 0; i < this.ports.size(); i++) {
-            this.enviarMensaje("nombre", "prueba", "OBTENER_ARCHIVO", this.ports.get(i));
-            Thread.sleep(500);
-        }
+    public void obtenerArchivo(String nombreArchivo) throws IOException, InterruptedException {
         DiskData diskData = DiskData.getInstance();
-        Thread.sleep(1000);
+        diskData.resetArchivo();
+        diskData.setMetadata(null);
+        
+        
+        for (int i = 0; i < this.ports.size(); i++) {
+            this.enviarMensaje("Nombre", nombreArchivo, "OBTENER_ARCHIVO", this.ports.get(i));
+        }//for i
+        
+        
+        this.enviarMensaje("Nombre", nombreArchivo, "OBTENER_METADATA", this.ports.get(0));
+        
+        while(diskData.getMetadata() == null)
+            Thread.sleep(1000);
+        
         diskData.construirArchivo();
     }//obtenerArchivo
 
