@@ -22,6 +22,13 @@ public class ArchivoData {
     private String path;
     private String nombre;
 
+    public ArchivoData() throws IOException, JDOMException {
+        File directorio = new File("../" + Variables.PATH + Variables.DISKID);
+        if (!directorio.exists()) {
+            directorio.mkdirs();
+        }
+    }//archivoData
+
     public ArchivoData(String nombre) throws IOException, JDOMException {
         File directorio = new File("../" + Variables.PATH + Variables.DISKID);
         if (!directorio.exists()) {
@@ -83,61 +90,27 @@ public class ArchivoData {
         }//for-each       
         return archivo;
     }//obtenerArchivo
-    
-    public void obtenerMetadata(SlaveConnection slave, String nombreArchivo){
-        
-        
-        
+
+    public void obtenerMetadata(SlaveConnection slave, String nombreArchivo) {
+
     }//obtenerMetadata
 
-    /*
-        this.bw = new BufferedWriter(
-                new FileWriter(
-                        new File("../" + Variables.PATH
-                                + Variables.DISKID + "/"
-                                + nombre + "-" + parte + ".txt"
-                        ),
-                        false
-                )
-        );
-        this.bw.write(encoded);
-        this.bw.flush();
-        this.bw.close();
-     */
- /*
-        this.bw = new BufferedWriter(
-                new FileWriter(
-                        new File("../" + Variables.PATH
-                                + Variables.DISKID + "/"
-                                + metadata.getNombre() + "-metadata.txt"
-                        ),
-                        false
-                )
-        );
-        this.bw.write(
-                metadata.getNombre()
-                + "-" + metadata.getAutor()
-                + "-" + metadata.getFecha()
-                + "-" + metadata.getFormato()
-        );
-        this.bw.flush();
-        this.bw.close();
-     */
- /*
-    public byte[] leerArchivo(String nombre) throws FileNotFoundException, IOException {
-        BufferedReader br = new BufferedReader(new FileReader(new File("prueba.txt")));
-        String linea = br.readLine();
-        String encoded = "";
-        while (linea != null) {
-            encoded += linea;
-            linea = br.readLine();
-        }//while
+    public ArrayList<Archivo> obtenerPartes(Element element) throws IOException {
+        ArrayList<Integer> indices = new ArrayList<>();
+        List elementList = element.getChild("Archivo").getChildren("Indice");
 
-        byte[] bytes = Base64.getDecoder().decode(encoded);
+        for (Object objetoActual : elementList) {
+            Element elementoActual = (Element) objetoActual;
+            indices.add(Integer.parseInt(elementoActual.getValue()));
+        }//for i
+        ArrayList<Archivo> archivo = this.obtenerArchivo();
+        ArrayList<Archivo> partes = new ArrayList<>();
 
-        Path destinationFile = Paths.get("", "prueba.pdf");
-        Files.write(destinationFile, bytes);
-        return null;
-    }
-     */
+        for (int i = 0; i < indices.size(); i++) {
+            partes.add(new Archivo(this.nombre, indices.get(i)
+                    + "", archivo.get(indices.get(i)).getEncoded()));
+        }
+        return partes;
+    }//obtenerPartes
+
 }//end class

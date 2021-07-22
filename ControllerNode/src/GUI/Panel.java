@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import org.jdom.JDOMException;
 
 public class Panel extends JPanel implements ActionListener{
     private JButton jbtnObtenerArchivo, jbtnEnviarArchivo;
@@ -59,6 +60,8 @@ public class Panel extends JPanel implements ActionListener{
         } catch (IOException ex) {
             Logger.getLogger(Panel.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InterruptedException ex) {
+            Logger.getLogger(Panel.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (JDOMException ex) {
             Logger.getLogger(Panel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }

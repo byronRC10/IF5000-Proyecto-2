@@ -4,6 +4,7 @@ package Entity;
 
 public class Metadata {
     private String nombre, autor, fecha, formato, parte;
+    private int indiceParidad, numeroDePartes;
 
     public Metadata(String nombre, String autor, String fecha, String formato, String parte) {
         this.nombre = nombre;
@@ -20,8 +21,16 @@ public class Metadata {
         this.formato = formato;
     }
     
+    public Metadata(String nombre, String autor, String fecha, String formato, int indiceParidad, int numeroDePartes) {
+        this.nombre = nombre;
+        this.autor = autor;
+        this.fecha = fecha;
+        this.formato = formato;
+        this.indiceParidad = indiceParidad;
+        this.numeroDePartes = numeroDePartes;
+    }
     
-
+    
     public String getNombre() {
         return nombre;
     }
@@ -60,6 +69,22 @@ public class Metadata {
 
     public void setParte(String parte) {
         this.parte = parte;
+    }
+
+    public int getIndiceParidad() {
+        return indiceParidad;
+    }
+
+    public void setIndiceParidad(int indiceParidad) {
+        this.indiceParidad = indiceParidad;
+    }
+
+    public int getNumeroDePartes() {
+        return numeroDePartes;
+    }
+
+    public void setNumeroDePartes(int numeroDePartes) {
+        this.numeroDePartes = numeroDePartes;
     }
 
     

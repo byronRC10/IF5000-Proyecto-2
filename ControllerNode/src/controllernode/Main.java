@@ -6,10 +6,11 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import javax.swing.JFrame;
+import org.jdom.JDOMException;
 
 public class Main {
 
-    public static void main(String[] args) {     
+    public static void main(String[] args) throws JDOMException {     
         try {
             Master master = Master.getInstance();
             
