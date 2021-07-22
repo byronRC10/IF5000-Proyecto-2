@@ -49,12 +49,10 @@ public class Panel extends JPanel implements ActionListener{
                 Metadata metadata = new Metadata(this.jtfNombreArchivo.getText()
                         , "Fabricio", "02/05/2021", this.jtfFormato.getText());
                 master.enviarArchivo(metadata);
+          
             }
             
-            
-            
-            
-            
+       
         } catch (SocketException ex) {
             Logger.getLogger(Panel.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {

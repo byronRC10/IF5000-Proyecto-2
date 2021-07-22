@@ -15,6 +15,8 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 
@@ -95,6 +97,24 @@ public class Master extends Thread {
                         diskData = DiskData.getInstance();
                         diskData.setMetadata(metadata);
                         
+                        break;
+                    case "BUSCAR":
+                        System.out.println("Buscar");
+                        String resultado = element.getChild("buscar").getValue();
+                        System.out.println("Mensaje2: " + resultado);
+                        String salida=  diskData.obtenerPosiblesLibros(resultado);
+        
+                        this.enviarMensaje("resultado", salida, "RESULTADO", mensaje.getPort());
+                         
+                        break;
+                    case "OBTENER":
+                        System.out.println("Obtener");
+                        String resultado2 = element.getChild("obtener").getValue();
+                        System.out.println("Mensaje2: " + resultado2);
+                        String salida2=  diskData.obtenerDatosLibro(resultado2);
+        
+                        this.enviarMensaje("libro", salida2, "LIBRO", mensaje.getPort());
+                
                         break;
                     default:
                         break;

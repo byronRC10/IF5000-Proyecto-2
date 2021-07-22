@@ -118,7 +118,56 @@ public class DiskData {
         }//for-each
 
         return null;
-    }//obtenerIndiceParidad
+    }//obtenerMetadata
+    
+    public String obtenerPosiblesLibros(String nombreArchivo) {
+        String salida="";
+        
+        List elementList = this.root.getChildren();
+
+        for (Object objetoActual : elementList) {
+            Element elementoActual = (Element) objetoActual;
+            Metadata metadataActual = new Metadata(
+                    elementoActual.getAttributeValue("Nombre"),
+                    elementoActual.getChild("Autor").getValue(),
+                    elementoActual.getChild("Fecha").getValue(),
+                    elementoActual.getChild("Formato").getValue(),
+                    Integer.parseInt(elementoActual.getChild("IndiceParidad").getValue()),
+                    Integer.parseInt(elementoActual.getChild("NumeroDePartes").getValue())
+                    );
+           if (metadataActual.getNombre().toLowerCase().startsWith(nombreArchivo.toLowerCase())) {
+               salida+=metadataActual.getNombre()+" ";
+           }// if
+        }//for-each
+        
+        return salida;
+    }// obtenerPosiblesLibros
+    
+    public String obtenerDatosLibro(String nombreArchivo) {
+        String salida="";
+        
+        List elementList = this.root.getChildren();
+
+        for (Object objetoActual : elementList) {
+            Element elementoActual = (Element) objetoActual;
+            Metadata metadataActual = new Metadata(
+                    elementoActual.getAttributeValue("Nombre"),
+                    elementoActual.getChild("Autor").getValue(),
+                    elementoActual.getChild("Fecha").getValue(),
+                    elementoActual.getChild("Formato").getValue(),
+                    Integer.parseInt(elementoActual.getChild("IndiceParidad").getValue()),
+                    Integer.parseInt(elementoActual.getChild("NumeroDePartes").getValue())
+                    );
+            
+               if (metadataActual.getNombre().equals(nombreArchivo)) { 
+                 salida+="Nombre: "+metadataActual.getNombre()+",Autor: "+metadataActual.getAutor()+",Fecha: "+
+                         metadataActual.getFecha()+",Formato: "+metadataActual.getFormato()+
+                         ",Indice paridad: "+metadataActual.getIndiceParidad()+",Numero de partes: "+metadataActual.getNumeroDePartes();
+               }// if
+        }//for-each
+        
+        return salida;
+    }// obtenerPosiblesLibros
     
     public ArrayList<Integer> obtenerFaltantes(Metadata metadata){
         ArrayList<Integer> indices = new ArrayList<>();
@@ -159,6 +208,7 @@ public class DiskData {
         byte[] bytes = Base64.getDecoder().decode(encoded);
 
         Path destinationFile = Paths.get(this.path, this.archivo.get(0).getNombre() + ".pdf");
+        System.out.println("Destination file: "+destinationFile);
         Files.write(destinationFile, bytes);
 
     }//contruirArchivo
