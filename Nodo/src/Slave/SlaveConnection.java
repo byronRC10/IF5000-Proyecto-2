@@ -85,6 +85,7 @@ public class SlaveConnection extends Thread {
                     case "READY":
                         System.out.println("Puerto asignado: " + Variables.SLAVEPORTNUMBER
                                 + "\nDisco asignado: " + Variables.DISKID);
+                        archivoData = new ArchivoData();
                         break;
 
                     case "PARTE":
@@ -115,6 +116,12 @@ public class SlaveConnection extends Thread {
                     case "OBTENER_ARCHIVO":
                         archivoData = new ArchivoData(element.getChild("Nombre").getValue());
                         this.enviarParte(archivoData.obtenerArchivo());
+                        break;
+                        
+                    case "OBTENER_PARTES":
+                        archivoData = new ArchivoData(element.getChild("Archivo").getAttributeValue("Nombre"));
+                        ArrayList<Archivo> partes = archivoData.obtenerPartes(element);
+                        this.enviarParte(partes);
                         break;
                     default:
                         break;

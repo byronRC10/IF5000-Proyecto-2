@@ -5,25 +5,14 @@ import Entity.Archivo;
 import Entity.Metadata;
 import Utility.Conversiones;
 import Utility.Variables;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import org.jdom.Element;
@@ -35,19 +24,21 @@ public class Master extends Thread {
     private DatagramSocket socket;
     private InetAddress address;
     private ArrayList<Integer> ports;
+    private int indiceParidad, ubicacionParidad;
 
     byte[] buffer = new byte[60000];
 
-    private Master() throws UnknownHostException, SocketException, IOException {
+    private Master() throws UnknownHostException, SocketException, IOException, JDOMException {
         this.address = InetAddress.getByName("localhost");
         this.socket = new DatagramSocket(Variables.PORTNUMBER);
         this.ports = new ArrayList<>();
         DiskData diskData = DiskData.getInstance();
-        //this.ports.add(Variables.PORTNUMBER);
+        this.indiceParidad = 0;
+        this.ubicacionParidad = 0;
         this.start();
     }//SlavaeConnection
 
-    public static Master getInstance() throws UnknownHostException, SocketException, IOException {
+    public static Master getInstance() throws UnknownHostException, SocketException, IOException, JDOMException {
         if (INSTANCE == null) {
             INSTANCE = new Master();
         }
@@ -149,9 +140,9 @@ public class Master extends Thread {
         this.socket.send(mensaje);
     }//enviarMensaje
 
-    public void enviarArchivo(Metadata metadata) throws IOException, InterruptedException {
+    public void enviarArchivo(Metadata metadata) throws IOException, InterruptedException, JDOMException {
         File documento = new File("../"+metadata.getNombre()+"."+metadata.getFormato());
-        
+
         //Se lee el archivo
         FileInputStream fileInputStreamReader = new FileInputStream(documento);
         
@@ -170,6 +161,12 @@ public class Master extends Thread {
         //Número de partes en que se va a divir el archivo codificado
         int numParts = (int) Math.ceil((encoded.length() * 1d) / partsLength);
         
+        //Se pasa el indice del nodo que va a tener la paridad para tenerlo
+        //en los datos del controller
+        DiskData diskData = DiskData.getInstance();
+        metadata.setIndiceParidad(this.indiceParidad);
+        metadata.setNumeroDePartes(numParts);
+        diskData.escribirEnMetadata(metadata);
         
         //Matris que va a contener el las partes separadas
         char[][] partes = new char[numParts][partsLength + 1];
@@ -202,11 +199,20 @@ public class Master extends Thread {
             ePacket.addContent(eParte);
 
             buffer = Conversiones.anadirAccion(ePacket, "PARTE").getBytes();
-
-            DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i%this.ports.size()));
+            DatagramPacket mensaje;
+            if(i%this.ports.size() == this.indiceParidad)
+                mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get((i+1)%this.ports.size()));
+            else
+                mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(i%this.ports.size()));
             this.socket.send(mensaje);
+            
+            mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(this.indiceParidad));
+            this.socket.send(mensaje);
+            
             Thread.sleep(100);
         }//for i
+        
+        this.indiceParidad = (this.indiceParidad+1)%this.ports.size();
         
         //Se envia la metadata a los nodos
         for (int i = 0; i < this.ports.size(); i++) {
@@ -236,23 +242,62 @@ public class Master extends Thread {
         }//for i
     }//enviarArchivo
 
-    public void obtenerArchivo(String nombreArchivo) throws IOException, InterruptedException {
+    public void obtenerArchivo(String nombreArchivo) throws IOException, InterruptedException, JDOMException {
         DiskData diskData = DiskData.getInstance();
         diskData.resetArchivo();
         diskData.setMetadata(null);
         
+        Metadata meta = diskData.obtenerMetadata(nombreArchivo);
+        
         
         for (int i = 0; i < this.ports.size(); i++) {
-            this.enviarMensaje("Nombre", nombreArchivo, "OBTENER_ARCHIVO", this.ports.get(i));
+            if(i!=meta.getIndiceParidad())
+                this.enviarMensaje("Nombre", nombreArchivo, "OBTENER_ARCHIVO", this.ports.get(i));
         }//for i
         
         
         this.enviarMensaje("Nombre", nombreArchivo, "OBTENER_METADATA", this.ports.get(0));
         
-        while(diskData.getMetadata() == null)
+        int espera = 0;//si la espera alcanza 10 entonces se rompe el ciclo
+        while(diskData.getArchivo().size() != meta.getNumeroDePartes() && espera <10){
             Thread.sleep(1000);
+            espera++;
+        }
+        
+        if(espera == 10){
+            ArrayList<Integer> indices = diskData.obtenerFaltantes(meta);
+            this.obtenerPartes(meta, indices);
+        }
+        
+        espera = 0;//si la espera alcanza 10 entonces se rompe el ciclo
+        while(diskData.getArchivo().size() != meta.getNumeroDePartes() && espera <10){
+            Thread.sleep(1000);
+            espera++;
+        }
         
         diskData.construirArchivo();
     }//obtenerArchivo
+    
+
+    public void obtenerPartes(Metadata meta, ArrayList<Integer> indices) throws IOException{
+        Element ePacket = new Element("packet");
+
+        Element eMsg = new Element("Archivo");
+        eMsg.setAttribute("Nombre", meta.getNombre());
+        
+        
+        for (int i = 0; i < indices.size(); i++) {
+            Element eIndice = new Element("Indice");
+            eIndice.addContent(indices.get(i)+"");
+            
+            eMsg.addContent(eIndice);
+        }
+        ePacket.addContent(eMsg);
+
+        buffer = Conversiones.anadirAccion(ePacket, "OBTENER_PARTES").getBytes();
+        System.out.println("Paridad en el disco: "+meta.getIndiceParidad());
+        DatagramPacket mensaje = new DatagramPacket(buffer, buffer.length, this.address, this.ports.get(meta.getIndiceParidad()));
+        this.socket.send(mensaje);
+    }//obtenerPartes
 
 }//end class
